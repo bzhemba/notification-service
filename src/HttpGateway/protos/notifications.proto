@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package notifications;
+
+option csharp_namespace = "NotificationService";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+service NotificationService {
+  rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
+  rpc GetNotifications(GetNotificationsRequest) returns (GetNotificationsResponse);
+}
+
+message SendNotificationRequest {
+  string user_email = 1;
+}
+
+message SendNotificationResponse {
+}
+
+message GetNotificationsRequest {
+  NotificationState state = 1;
+  int32 page_size = 2;
+  google.protobuf.StringValue page_token = 3;
+}
+
+message GetNotificationsResponse {
+  repeated Notification notifications = 1;
+  google.protobuf.StringValue next_page_token = 2;
+}
+
+enum NotificationState {
+  NOTIFICATION_STATE_UNSPECIFIED = 0;
+  NOTIFICATION_STATE_SENT = 1;
+  NOTIFICATION_STATE_PENDING = 2;
+}
+
+message Notification{
+  int64 application_id = 1;
+  string user_email = 2;
+  google.protobuf.Timestamp created_at = 3;
+  NotificationState state = 4;
+}

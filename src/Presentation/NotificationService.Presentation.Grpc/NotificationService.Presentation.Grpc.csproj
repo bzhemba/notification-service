@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="Grpc.AspNetCore"/>
+        <PackageReference Include="Grpc.AspNetCore.Server.Reflection"/>
+        <PackageReference Include="Itmo.Dev.Platform.MessagePersistence.Postgres" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\Application\NotificationService.Application.Contracts\NotificationService.Application.Contracts.csproj"/>
+    </ItemGroup>
+    <ItemGroup>
+        <Protobuf ProtoRoot="protos" Include="protos\**\*.proto" GrpcServices="Server"/>
+        <Protobuf Update="protos\notifications.proto">
+            <GrpcServices>Both</GrpcServices>
+            <Access>Public</Access>
+            <ProtoCompile>True</ProtoCompile>
+            <CompileOutputs>True</CompileOutputs>
+            <OutputDir>obj\Debug/net8.0/</OutputDir>
+            <Generator>MSBuild:Compile</Generator>
+        </Protobuf>
+    </ItemGroup>
+
+</Project>
