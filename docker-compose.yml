@@ -1,0 +1,97 @@
+﻿services:
+  postgres:
+    image: postgres:latest
+    container_name: submission-service-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:6432"
+    restart: unless-stopped
+    networks:
+      - submission-service-network
+  submission-service:
+    image: ghcr.io/bzhemba/submission-service:latest
+    platform: linux/arm64
+    container_name: submission-service
+    networks:
+      - submission-service-network
+    depends_on:
+      - postgres
+      - kafka
+    ports:
+      - '8070:8070'
+    environment:
+      Infrastructure__Persistence__Postgres__Host: postgres
+      Infrastructure__Persistence__Postgres__Database: postgres
+      Infrastructure__Persistence__Postgres__Username: postgres
+      Infrastructure__Persistence__Postgres__Password: postgres
+      Presentation__Kafka__Host: kafka:9094
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
+    restart: unless-stopped
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - submission-service-network
+  
+  kafka:
+    image: wurstmeister/kafka:latest
+    restart: unless-stopped
+    environment:
+      KAFKA_LOG_DIRS: /kafka-data
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_LISTENERS: EXTERNAL://:9092,INTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://127.0.0.1:8001,INTERNAL://kafka:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
+      ALLOW_PLAINTEXT_LISTENER: yes
+      KAFKA_CREATE_TOPICS: >
+        draft_notification:1:1,
+        notification_creation:1:1,
+    depends_on:
+      - zookeeper
+    networks:
+      - submission-service-network
+    volumes:
+      - submission-service-kafka-data:/kafka-data
+    ports:
+      - '8001:9092'
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    build:
+      context: .
+    restart: unless-stopped
+    depends_on:
+      - kafka
+    networks:
+      - submission-service-network
+    ports:
+      - "8003:8080"
+    volumes:
+      - ./src/Presentation/NotificationService.Presentation.Kafka/protos:/schemas
+    environment:
+      kafka.clusters.0.name: kafka
+      kafka.clusters.0.bootstrapServers: kafka:9094
+      kafka.clusters.0.defaultKeySerde: ProtobufFile
+      kafka.clusters.0.defaultValueSerde: ProtobufFile
+      
+      kafka.clusters.0.serde.0.name: ProtobufFile
+      kafka.clusters.0.serde.0.properties.protobufFilesDir: /schemas/
+      
+      kafka.clusters.0.serde.0.properties.protobufMessageNameForKeyByTopic.draft_notification: applications.DraftNotificationKey
+      kafka.clusters.0.serde.0.properties.protobufMessageNameByTopic.draft_notification: applications.DraftNotificationValue
+      
+      kafka.clusters.0.serde.0.properties.protobufMessageNameForKeyByTopic.notification_creation: notifications.NotificationCreationKey
+      kafka.clusters.0.serde.0.properties.protobufMessageNameByTopic.notification_creation: notifications.NotificationCreationValue
+
+networks:
+  submission-service-network:
+    driver: bridge
+
+volumes:
+  submission-service-kafka-data:
+
